@@ -26,10 +26,18 @@ PG_BINARY_ENCODER_PATCH = <<-EOF
 		case Qfalse_int_const : mybool = 0; break;
 EOF
 
-PATCHED_FILES = {'xml_node_set.c'      => {:match =>  /[[:blank:]]*?switch\s*?\(.*?Qnil:/m, 
-                                           :replacement => XML_NODE_SET_PATCH},
-                 'pg_binary_encoder.c' => {:match => /[[:blank:]]*?switch\s*?\(.*?Qfalse\s*?:.*?break;/m,
-                                           :replacement => PG_BINARY_ENCODER_PATCH}}
+PATCHED_FILES = {'xml_node_set.c'      => [{:match =>  /[[:blank:]]*?switch\s*?\(.*?Qnil:/m, 
+                                           :replacement => XML_NODE_SET_PATCH}],
+                 'pg_binary_encoder.c' => [{:match => /[[:blank:]]*?switch\s*?\(.*?Qfalse\s*?:.*?break;/m,
+                                           :replacement => PG_BINARY_ENCODER_PATCH}],
+                 'bytebuffer.c'        => [{:match => /(static VALUE .*?) = Qnil;/,
+                                           :replacement => '\1;'}],
+                 'monitor.c'           => [{:match => /(static VALUE .*?) = Qnil;/,
+                                           :replacement => '\1;'}],
+                 'selector.c'          => [{:match => /(static VALUE .*?)\s+= Qnil;/,
+                                           :replacement => '\1;'}],
+                 'websocket_mask.c'    => [{:match => /(VALUE .*?)\s+= Qnil;/,
+                                           :replacement => '\1;'}]}
 
 def preprocess(line)
   if line =~ VALUE_LOCALS
@@ -74,8 +82,10 @@ def preprocess(line)
 end
 
 def patch(file, contents)
-  if patch = PATCHED_FILES[file]
-    contents = contents.gsub(patch[:match], patch[:replacement].rstrip)
+  if patches = PATCHED_FILES[file]
+    patches.each do |patch|
+      contents = contents.gsub(patch[:match], patch[:replacement].rstrip)
+    end
   end
   contents
 end
